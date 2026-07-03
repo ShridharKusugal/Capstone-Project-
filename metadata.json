@@ -1,0 +1,6 @@
+{
+  "name": "RideX",
+  "description": "A high-fidelity full-stack Uber-clone application featuring simulated passenger and driver mobile app emulators, real-time simulated GIS mapping, wallets, payments, and an interactive Web Admin Dashboard with server-side AI Fare Prediction.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
