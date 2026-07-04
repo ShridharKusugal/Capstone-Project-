@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   ShieldAlert, Award, Star, Loader,
   Check, X, Navigation, User,
-  Send, MessageCircle, Phone, Menu, Sliders,
-  ArrowRight, LogOut
+  Send, MessageCircle, Phone, Menu,
+  ArrowRight, LogOut, DollarSign, TrendingUp,
+  MapPin, ChevronRight, Clock, Wallet, Settings2
 } from 'lucide-react';
 import { Ride } from '../types';
 import CityMap from '../components/CityMap';
@@ -45,6 +46,7 @@ export default function DriverApp({
   activeRoute = []
 }: DriverAppProps) {
   const [step, setStep] = useState<'auth' | 'app'>('auth');
+  const [activeTab, setActiveTab] = useState<'map' | 'earnings' | 'profile'>('map');
 
   // Bottom sheet state: 'collapsed' | 'expanded'
   const [sheetState, setSheetState] = useState<'collapsed' | 'expanded'>('collapsed');
@@ -457,7 +459,7 @@ export default function DriverApp({
                    {[
                      { icon: <Award size={20} />, label: 'Earnings', val: `₹${driverWalletBalance.toFixed(0)}`, action: undefined },
                      { icon: <User size={20} />, label: 'Profile Settings', val: carPlate, action: () => { setShowProfile(true); setMenuOpen(false); } },
-                     { icon: <Sliders size={20} />, label: 'Preferences', val: 'All trips', action: undefined }
+                     { icon: <Settings2 size={20} />, label: 'Preferences', val: 'All trips', action: undefined }
                    ].map((item, i) => (
                      <div 
                        key={i} 
@@ -656,29 +658,36 @@ export default function DriverApp({
                     </div>
 
                     {/* Action Buttons based on status */}
-                    <div className="pt-2">
+                    <div className="pt-2 space-y-2">
                       {currentRide.status === 'accepted' && (
                         <button 
-                          className="w-full py-4 rounded-full bg-slate-900 text-white font-black text-sm tracking-widest flex items-center justify-center transition hover:bg-slate-800 shadow-md"
-                          onClick={() => {}} 
+                          className="w-full py-4 rounded-full bg-slate-900 text-white font-black text-sm tracking-widest flex items-center justify-center gap-2 transition hover:bg-slate-800 shadow-md"
+                          onClick={() => {
+                            // Trigger arriving status update
+                            addToast({ type: 'info', title: '🧭 Navigating', message: `Heading to pickup: ${currentRide.pickup.split(',')[0]}` });
+                          }}
                         >
-                          NAVIGATE
+                          <Navigation size={16} />
+                          NAVIGATE TO PICKUP
                         </button>
                       )}
                       
                       {currentRide.status === 'arriving' && (
                         <button 
-                          className="w-full py-4 rounded-full bg-slate-900 text-white font-black text-sm tracking-widest flex items-center justify-center transition hover:bg-slate-800 shadow-md"
+                          onClick={onStartRide}
+                          className="w-full py-4 rounded-full bg-emerald-600 text-white font-black text-sm tracking-widest flex items-center justify-center gap-2 transition hover:bg-emerald-700 shadow-md"
                         >
-                          ARRIVING NOW
+                          <Check size={16} />
+                          I'VE ARRIVED — START TRIP
                         </button>
                       )}
 
                       {currentRide.status === 'arrived' && (
                         <button 
                           onClick={onStartRide}
-                          className="w-full py-4 rounded-full bg-emerald-500 text-white font-black text-sm tracking-widest flex items-center justify-center transition hover:bg-emerald-600 shadow-md shadow-emerald-500/20"
+                          className="w-full py-4 rounded-full bg-emerald-500 text-white font-black text-sm tracking-widest flex items-center justify-center gap-2 transition hover:bg-emerald-600 shadow-md shadow-emerald-500/20"
                         >
+                          <ArrowRight size={16} />
                           START TRIP
                         </button>
                       )}
@@ -686,8 +695,9 @@ export default function DriverApp({
                       {currentRide.status === 'active' && (
                         <button 
                           onClick={onCompleteRide}
-                          className="w-full py-4 rounded-full bg-amber-500 text-slate-900 font-black text-sm tracking-widest flex items-center justify-center transition hover:bg-amber-600 shadow-md shadow-amber-500/20"
+                          className="w-full py-4 rounded-full bg-amber-500 text-slate-900 font-black text-sm tracking-widest flex items-center justify-center gap-2 transition hover:bg-amber-600 shadow-md shadow-amber-500/20"
                         >
+                          <Check size={16} />
                           COMPLETE DROP-OFF
                         </button>
                       )}
@@ -926,6 +936,99 @@ export default function DriverApp({
               </div>
             </div>
           )}
+
+
+          {/* ── EARNINGS SCREEN ── */}
+          {activeTab === 'earnings' && (
+            <div className="absolute inset-0 z-40 bg-white overflow-y-auto flex flex-col">
+              {/* Header */}
+              <div className="bg-amber-500 pt-10 pb-6 px-5 text-slate-900">
+                <h2 className="text-xl font-black">Today's Earnings</h2>
+                <p className="text-xs opacity-70 font-medium mt-0.5">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                <div className="mt-4 flex gap-4">
+                  <div>
+                    <div className="text-3xl font-black">₹{driverWalletBalance.toFixed(0)}</div>
+                    <div className="text-xs font-bold opacity-70 uppercase tracking-wide mt-0.5">Total Earned</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4 flex-1">
+                {/* Stats Grid */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Trips', value: '12', icon: '🚗' },
+                    { label: 'Online Hrs', value: '5.2h', icon: '⏱️' },
+                    { label: 'Acceptance', value: '96%', icon: '✅' },
+                  ].map(stat => (
+                    <div key={stat.label} className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center">
+                      <div className="text-xl mb-1">{stat.icon}</div>
+                      <div className="text-sm font-black text-slate-900">{stat.value}</div>
+                      <div className="text-[9px] font-bold uppercase text-slate-400 tracking-wide mt-0.5">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Weekly Breakdown */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">This Week</h3>
+                  <div className="space-y-3">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => {
+                      const earned = [820, 1240, 680, 1560, 990, 1840, 420][i];
+                      const maxEarned = 1840;
+                      return (
+                        <div key={day} className="flex items-center gap-3">
+                          <span className="text-[10px] font-bold text-slate-500 w-6">{day}</span>
+                          <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-amber-500 rounded-full"
+                              style={{ width: `${(earned / maxEarned) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] font-black text-slate-700 w-12 text-right">₹{earned}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Payout Info */}
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Next Payout</div>
+                    <div className="text-lg font-black text-emerald-700 mt-0.5">₹{(driverWalletBalance * 0.9).toFixed(0)}</div>
+                    <div className="text-[10px] text-emerald-600 mt-0.5">Scheduled: Tomorrow 9:00 AM</div>
+                  </div>
+                  <Wallet size={32} className="text-emerald-500" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Persistent Bottom Navigation ─── */}
+          <div className="absolute bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-around px-2 pt-2 pb-4 shadow-lg">
+            <button
+              onClick={() => setActiveTab('map')}
+              className={`flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl transition-all ${activeTab === 'map' ? 'text-amber-600' : 'text-slate-400'}`}
+            >
+              <MapPin size={20} strokeWidth={activeTab === 'map' ? 2.5 : 1.5} />
+              <span className="text-[9px] font-black uppercase tracking-wider">Map</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('earnings')}
+              className={`flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl transition-all ${activeTab === 'earnings' ? 'text-amber-600' : 'text-slate-400'}`}
+            >
+              <DollarSign size={20} strokeWidth={activeTab === 'earnings' ? 2.5 : 1.5} />
+              <span className="text-[9px] font-black uppercase tracking-wider">Earnings</span>
+            </button>
+            <button
+              onClick={() => setShowProfile(true)}
+              className={`flex flex-col items-center gap-1 px-4 py-1.5 rounded-xl transition-all ${showProfile ? 'text-amber-600' : 'text-slate-400'}`}
+            >
+              <User size={20} strokeWidth={showProfile ? 2.5 : 1.5} />
+              <span className="text-[9px] font-black uppercase tracking-wider">Profile</span>
+            </button>
+          </div>
 
         </div>
       )}

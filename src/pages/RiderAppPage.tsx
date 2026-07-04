@@ -1562,8 +1562,219 @@ export default function PassengerApp({
             </form>
 
           </div>
+
+          {/* ─── TRIPS SCREEN ─── */}
+          {activeView === 'trips' && (
+            <div className="absolute inset-0 z-40 bg-white flex flex-col overflow-hidden">
+              <div className="bg-emerald-600 pt-10 pb-5 px-5 text-white">
+                <h2 className="text-xl font-black">My Trips</h2>
+                <p className="text-xs opacity-70 mt-0.5">Your ride history</p>
+              </div>
+              <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+                {(ridesList.length === 0) ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-slate-400 gap-3">
+                    <span className="text-4xl">🚗</span>
+                    <p className="text-sm font-bold">No trips yet</p>
+                    <p className="text-xs">Book your first ride!</p>
+                  </div>
+                ) : (
+                  [...ridesList].reverse().map((ride, i) => (
+                    <div key={ride.id || i} className="p-4 hover:bg-slate-50 transition">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {ride.status === 'completed' ? '✅ Completed' :
+                             ride.status === 'cancelled' ? '❌ Cancelled' : '🔄 ' + ride.status}
+                          </span>
+                          <p className="text-xs text-slate-400 mt-0.5">{ride.createdAt ? new Date(ride.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Today'}</p>
+                        </div>
+                        <span className="text-sm font-black text-slate-900">₹{ride.fare}</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                          <p className="text-xs text-slate-700 font-medium truncate">{ride.pickup}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-sm bg-red-500 shrink-0" />
+                          <p className="text-xs text-slate-500 truncate">{ride.destination}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ─── WALLET SCREEN ─── */}
+          {activeView === 'wallet' && (
+            <div className="absolute inset-0 z-40 bg-white flex flex-col overflow-hidden">
+              <div className="bg-slate-900 pt-10 pb-6 px-5 text-white">
+                <p className="text-xs font-mono text-slate-400 uppercase tracking-widest">Available Balance</p>
+                <div className="text-4xl font-black mt-1">₹{walletBalance.toFixed(2)}</div>
+                <div className="flex gap-3 mt-5">
+                  {[200, 500, 1000].map(amt => (
+                    <button
+                      key={amt}
+                      onClick={() => setRechargeAmt(String(amt))}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${rechargeAmt === String(amt) ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white/10 border-white/20 text-white'}`}
+                    >
+                      +₹{amt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-5 space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    placeholder="Enter amount"
+                    value={rechargeAmt}
+                    onChange={e => setRechargeAmt(e.target.value)}
+                    className="flex-1 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    onClick={triggerRecharge}
+                    disabled={isRecharging}
+                    className="bg-emerald-500 text-white font-black text-xs px-5 py-3 rounded-xl flex items-center gap-2 hover:bg-emerald-600 transition disabled:opacity-50"
+                  >
+                    {isRecharging ? <Loader size={14} className="animate-spin" /> : null}
+                    TOP UP
+                  </button>
+                </div>
+
+                <div>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 mt-2">Transaction History</h3>
+                  <div className="space-y-2">
+                    {transactions.length === 0 ? (
+                      <div className="text-center py-8 text-slate-400">
+                        <p className="text-sm font-bold">No transactions yet</p>
+                      </div>
+                    ) : (
+                      [...transactions].reverse().slice(0, 20).map(txn => (
+                        <div key={txn.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${txn.type === 'deposit' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                              {txn.type === 'deposit' ? '↑' : '↓'}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-800 leading-tight">{txn.description}</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">{txn.timestamp}</p>
+                            </div>
+                          </div>
+                          <span className={`text-sm font-black ${txn.type === 'deposit' ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {txn.type === 'deposit' ? '+' : '-'}₹{txn.amount}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ─── PROFILE SCREEN ─── */}
+          {activeView === 'profile' && (
+            <div className="absolute inset-0 z-40 bg-white flex flex-col overflow-y-auto">
+              {/* Header */}
+              <div className="bg-gradient-to-br from-emerald-600 to-emerald-400 pt-12 pb-8 px-5 text-white text-center">
+                <img src="/rider_avatar.png" alt="Profile" className="w-20 h-20 rounded-full border-4 border-white/30 mx-auto object-cover shadow-xl" />
+                <h2 className="text-xl font-black mt-3">{userName}</h2>
+                <p className="text-xs opacity-75 mt-0.5">{userPhone}</p>
+                <div className="flex items-center justify-center gap-1 mt-2">
+                  <Star size={12} className="fill-yellow-300 text-yellow-300" />
+                  <span className="text-xs font-bold">4.91</span>
+                  <span className="text-[10px] opacity-60 ml-1">· {totalTrips} trips · Member since {memberSince}</span>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Total Trips', value: String(totalTrips), emoji: '🚗' },
+                    { label: 'Wallet', value: `₹${walletBalance.toFixed(0)}`, emoji: '💳' },
+                    { label: 'Rating', value: '4.91', emoji: '⭐' },
+                  ].map(stat => (
+                    <div key={stat.label} className="bg-slate-50 border border-slate-200 rounded-2xl p-3 text-center">
+                      <div className="text-xl">{stat.emoji}</div>
+                      <div className="text-sm font-black text-slate-900 mt-1">{stat.value}</div>
+                      <div className="text-[9px] text-slate-400 uppercase tracking-wide font-bold mt-0.5">{stat.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Edit Details */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Account Details</h3>
+                  {[
+                    { label: 'Full Name', value: userName, setter: setUserName },
+                    { label: 'Email', value: userEmail, setter: setUserEmail },
+                    { label: 'Phone', value: userPhone, setter: setUserPhone },
+                    { label: 'Home Address', value: homeAddress, setter: setHomeAddress },
+                    { label: 'Work Address', value: workAddress, setter: setWorkAddress },
+                  ].map(field => (
+                    <div key={field.label}>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mb-1">{field.label}</p>
+                      <input
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-500"
+                        value={field.value}
+                        onChange={e => field.setter(e.target.value)}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Preferences */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Preferences</h3>
+                  <PrefToggle label="Ride Sharing Alerts" emoji="🔔" defaultOn={true} />
+                  <PrefToggle label="Email Receipts" emoji="📧" defaultOn={true} />
+                  <PrefToggle label="Promo Notifications" emoji="🎁" defaultOn={false} />
+                </div>
+
+                {/* Logout */}
+                <button
+                  onClick={() => setStep('auth')}
+                  className="w-full py-3.5 rounded-2xl bg-red-50 text-red-600 font-black text-sm border border-red-100 flex items-center justify-center gap-2 hover:bg-red-100 transition"
+                >
+                  <LogOut size={16} />
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ─── Persistent Bottom Navigation Bar ─── */}
+          {!showChat && (
+            <div className="absolute bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center justify-around px-2 pt-2 pb-4 shadow-lg">
+              {[
+                { view: 'map' as const, icon: '🗺️', label: 'Ride' },
+                { view: 'trips' as const, icon: '🚗', label: 'Trips' },
+                { view: 'wallet' as const, icon: '💳', label: 'Wallet' },
+                { view: 'profile' as const, icon: '👤', label: 'Profile' },
+              ].map(item => (
+                <button
+                  key={item.view}
+                  onClick={() => setActiveView(item.view)}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${
+                    activeView === item.view ? 'text-emerald-600' : 'text-slate-400'
+                  }`}
+                >
+                  <span className={`text-lg transition-transform ${activeView === item.view ? 'scale-110' : 'scale-100'}`}>{item.icon}</span>
+                  <span className={`text-[9px] font-black uppercase tracking-wider ${activeView === item.view ? 'text-emerald-600' : 'text-slate-400'}`}>{item.label}</span>
+                  {activeView === item.view && <div className="w-4 h-0.5 bg-emerald-500 rounded-full mt-0.5" />}
+                </button>
+              ))}
+            </div>
+          )}
+
         </div>
       )}
+
 
       {/* ── Payment Overlay ── */}
       {currentRide?.status === 'completed' && paymentStep === 'pending' && (
