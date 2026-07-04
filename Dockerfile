@@ -34,4 +34,4 @@ RUN npm ci --omit=dev && npm cache clean --force
 EXPOSE 10000
 
 # The command Render will run (it passes PORT automatically)
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/server.cjs"]
