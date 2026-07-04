@@ -1,35 +1,37 @@
-# Build Stage
-FROM node:18-alpine AS builder
+# ==============================
+# 1️⃣ Build stage (typescript -> js)
+# ==============================
+FROM node:20-alpine AS builder
 
+# Set working directory inside the image
 WORKDIR /app
 
-# Copy package descriptors and install all dependencies (including devDependencies for build)
+# Copy only package files first – leverage layer caching
 COPY package*.json ./
+# Install **all** dependencies (including dev) because we need TypeScript to compile
 RUN npm ci
 
-# Copy application source code
+# Copy the rest of the source code
 COPY . .
 
-# Build both frontend static assets (Vite) and backend bundle (esbuild server.ts)
+# Build the TypeScript project (tsc will output to ./dist)
 RUN npm run build
 
-# Production Runner Stage
-FROM node:18-alpine AS runner
+# ==============================
+# 2️⃣ Production stage (runtime only)
+# ==============================
+FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-# Define production environment
-ENV NODE_ENV=production
-
-# Copy package descriptors and install only production dependencies
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy built bundles from the builder stage
+# Copy only the compiled output and production deps from the builder stage
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package*.json ./
+# Install ONLY production dependencies
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Expose server port
-EXPOSE 3000
+# Expose the port Render will assign (default 10000)
+EXPOSE 10000
 
-# Start the application using the esbuild bundled server script
-CMD ["node", "dist/server.cjs"]
+# The command Render will run (it passes PORT automatically)
+CMD ["node", "dist/index.js"]
