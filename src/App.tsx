@@ -14,7 +14,6 @@ import DriverAppPage from './pages/DriverAppPage';
 import AdminPanelPage from './pages/AdminPanelPage';
 import CodeHubPage from './pages/CodeHubPage';
 import LandingPage from './pages/LandingPage';
-import SimulatorLayout from './layouts/SimulatorLayout';
 import { generateCityRoute, getHaversineDistance, lookupLocationCoords } from './utils/geo';
 import useSocket from './hooks/useSocket';
 
@@ -600,76 +599,100 @@ function App() {
           </div>
         } />
 
-        {/* Unified Passenger App — Clean Mobile Container */}
+        {/* Unified Passenger App */}
         <Route path="/simulator" element={
-          <SimulatorLayout themeColor="emerald">
-            <RiderAppPage
-              currentRide={enrichedRide}
-              onRequestRide={handleRequestRide}
-              onCancelRide={handleCancelRide}
-              onAddTransaction={(t: any) => setWalletTransactions((prev: any) => [t, ...prev])}
-              walletBalance={passengerWallet}
-              onUpdateWallet={(amt: any) => dispatch(updateWalletBalance(passengerWallet + amt))}
-              transactions={walletTransactions}
-              onCompleteRating={handleCompleteRating}
-              isDarkMode={isDarkMode}
-              selectedPickup={selectedPickup}
-              selectedDestination={selectedDestination}
-              onPickupChange={setSelectedPickup}
-              onDestinationChange={setSelectedDestination}
-              systemConfig={systemConfig}
-              socketProps={socketProps}
-              ridesList={ridesList}
-              liveDriverCoords={liveDriverCoords}
-              activeRoute={activeRoute}
-              currentStepIndex={currentStepIndex}
-            />
-          </SimulatorLayout>
+          <div className="w-full h-screen bg-slate-950 overflow-hidden relative">
+            {/* Quick Nav Header (Only visible on large screens or as an overlay) */}
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 w-full max-w-[440px] px-4 font-mono text-[10px] md:opacity-50 hover:opacity-100 transition-opacity">
+              <Link to="/" className="bg-slate-900/80 backdrop-blur text-slate-300 hover:text-emerald-400 font-bold px-3 py-1.5 rounded-full border border-slate-800 transition shadow-lg">← Home</Link>
+              <div className="flex-1" />
+              <Link to="/driver" className="bg-amber-500/90 hover:bg-amber-500 text-slate-950 px-2.5 py-1.5 rounded-full font-bold transition shadow-lg">Driver ➔</Link>
+              <Link to="/admin" className="bg-cyan-500/90 hover:bg-cyan-500 text-slate-950 px-2.5 py-1.5 rounded-full font-bold transition shadow-lg">Admin ➔</Link>
+            </div>
+
+            <div className="w-full h-full">
+              <RiderAppPage
+                currentRide={enrichedRide}
+                onRequestRide={handleRequestRide}
+                onCancelRide={handleCancelRide}
+                onAddTransaction={(t: any) => setWalletTransactions((prev: any) => [t, ...prev])}
+                walletBalance={passengerWallet}
+                onUpdateWallet={(amt: any) => dispatch(updateWalletBalance(passengerWallet + amt))}
+                transactions={walletTransactions}
+                onCompleteRating={handleCompleteRating}
+                isDarkMode={isDarkMode}
+                selectedPickup={selectedPickup}
+                selectedDestination={selectedDestination}
+                onPickupChange={setSelectedPickup}
+                onDestinationChange={setSelectedDestination}
+                systemConfig={systemConfig}
+                socketProps={socketProps}
+                ridesList={ridesList}
+                liveDriverCoords={liveDriverCoords}
+                activeRoute={activeRoute}
+                currentStepIndex={currentStepIndex}
+              />
+            </div>
+          </div>
         } />
 
 
-        {/* Standalone Rider Web App – Clean Mobile Layout */}
+        {/* Standalone Rider Web App */}
         <Route path="/rider" element={
-          <SimulatorLayout themeColor="emerald">
-            <RiderAppPage
-              currentRide={enrichedRide}
-              onRequestRide={handleRequestRide}
-              onCancelRide={handleCancelRide}
-              onAddTransaction={(t: any) => setWalletTransactions((prev: any) => [t, ...prev])}
-              walletBalance={passengerWallet}
-              onUpdateWallet={(amt: any) => dispatch(updateWalletBalance(passengerWallet + amt))}
-              transactions={walletTransactions}
-              onCompleteRating={handleCompleteRating}
-              isDarkMode={isDarkMode}
-              selectedPickup={selectedPickup}
-              selectedDestination={selectedDestination}
-              onPickupChange={setSelectedPickup}
-              onDestinationChange={setSelectedDestination}
-              systemConfig={systemConfig}
-              socketProps={socketProps}
-              ridesList={ridesList}
-            />
-          </SimulatorLayout>
+          <div className="w-full h-screen bg-slate-950 overflow-hidden relative">
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 w-full max-w-[440px] px-4 font-mono text-[10px] md:opacity-50 hover:opacity-100 transition-opacity">
+              <Link to="/" className="bg-slate-900/80 backdrop-blur text-slate-300 hover:text-emerald-400 font-bold px-3 py-1.5 rounded-full border border-slate-800 transition shadow-lg">← Home</Link>
+            </div>
+            
+            <div className="w-full h-full">
+              <RiderAppPage
+                currentRide={enrichedRide}
+                onRequestRide={handleRequestRide}
+                onCancelRide={handleCancelRide}
+                onAddTransaction={(t: any) => setWalletTransactions((prev: any) => [t, ...prev])}
+                walletBalance={passengerWallet}
+                onUpdateWallet={(amt: any) => dispatch(updateWalletBalance(passengerWallet + amt))}
+                transactions={walletTransactions}
+                onCompleteRating={handleCompleteRating}
+                isDarkMode={isDarkMode}
+                selectedPickup={selectedPickup}
+                selectedDestination={selectedDestination}
+                onPickupChange={setSelectedPickup}
+                onDestinationChange={setSelectedDestination}
+                systemConfig={systemConfig}
+                socketProps={socketProps}
+                ridesList={ridesList}
+              />
+            </div>
+          </div>
         } />
 
-        {/* Standalone Driver Web App – Clean Mobile Layout */}
+        {/* Standalone Driver Web App */}
         <Route path="/driver" element={
-          <SimulatorLayout themeColor="amber">
-            <DriverAppPage
-              currentRide={enrichedRide}
-              driverOnline={driverOnline}
-              onToggleOnline={handleToggleDriverOnline}
-              onAcceptRide={handleAcceptRide}
-              onRejectRide={() => handleUpdateRideStatus(enrichedRide!.id, 'cancelled')}
-              onStartRide={() => handleUpdateRideStatus(enrichedRide!.id, 'active')}
-              onCompleteRide={() => handleUpdateRideStatus(enrichedRide!.id, 'completed')}
-              driverWalletBalance={driverWallet}
-              isDarkMode={isDarkMode}
-              socketProps={socketProps}
-              driverCoords={liveDriverCoords}
-              activeRoute={activeRoute}
-            />
-          </SimulatorLayout>
+          <div className="w-full h-screen bg-slate-950 overflow-hidden relative">
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 w-full max-w-[440px] px-4 font-mono text-[10px] md:opacity-50 hover:opacity-100 transition-opacity">
+              <Link to="/" className="bg-slate-900/80 backdrop-blur text-slate-300 hover:text-amber-500 font-bold px-3 py-1.5 rounded-full border border-slate-800 transition shadow-lg">← Home</Link>
+              <div className="flex-1" />
+              <Link to="/simulator" className="bg-emerald-500/90 hover:bg-emerald-500 text-slate-950 px-2.5 py-1.5 rounded-full font-bold transition shadow-lg">Rider ➔</Link>
+            </div>
+            
+            <div className="w-full h-full">
+              <DriverAppPage
+                currentRide={enrichedRide}
+                driverOnline={driverOnline}
+                onToggleOnline={handleToggleDriverOnline}
+                onAcceptRide={handleAcceptRide}
+                onRejectRide={() => handleUpdateRideStatus(enrichedRide!.id, 'cancelled')}
+                onStartRide={() => handleUpdateRideStatus(enrichedRide!.id, 'active')}
+                onCompleteRide={() => handleUpdateRideStatus(enrichedRide!.id, 'completed')}
+                driverWalletBalance={driverWallet}
+                isDarkMode={isDarkMode}
+                socketProps={socketProps}
+                driverCoords={liveDriverCoords}
+                activeRoute={activeRoute}
+              />
+            </div>
+          </div>
         } />
 
         {/* Standalone Admin Dashboard */}
