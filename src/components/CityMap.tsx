@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { Navigation } from 'lucide-react';
 import { Map as MapLibreMap, MapMarker, MarkerContent, MapRoute, MapControls, MarkerLabel } from './ui/map';
 import { getMapStyle, MAP_DEFAULTS } from '../services/mapService';
+import { Ride } from '../types';
 
 interface CityMapProps {
   pickup: string;
@@ -9,7 +10,7 @@ interface CityMapProps {
   onSelectPickup: (name: string, lat: number, lng: number) => void;
   onSelectDestination: (name: string, lat: number, lng: number) => void;
   driverCoords?: { lat: number; lng: number };
-  rideStatus?: 'pending' | 'searching' | 'accepted' | 'arriving' | 'arrived' | 'active' | 'completed' | 'cancelled' | 'failed' | 'idle' | 'requested';
+  rideStatus?: Ride['status'];
   activeRoute?: { lat: number; lng: number }[];
   currentStepIndex?: number;
   isDarkMode?: boolean;
@@ -33,6 +34,43 @@ export default function CityMap({
   // Extract lat/lng from activeRoute or default
   const pickupLatLng = activeRoute && activeRoute.length > 0 ? activeRoute[0] : null;
   const destLatLng = activeRoute && activeRoute.length > 1 ? activeRoute[activeRoute.length - 1] : null;
+
+  const [animatedDriverCoords, setAnimatedDriverCoords] = React.useState<{ lat: number; lng: number } | null>(null);
+
+  React.useEffect(() => {
+    if (!driverCoords) {
+      setAnimatedDriverCoords(null);
+      return;
+    }
+
+    if (!animatedDriverCoords) {
+      setAnimatedDriverCoords(driverCoords);
+      return;
+    }
+
+    const startCoords = { ...animatedDriverCoords };
+    const endCoords = { ...driverCoords };
+    const duration = 1200; // duration in ms
+    const startTime = performance.now();
+    let animId: number;
+
+    const tick = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const ease = progress * (2 - progress); // easeOutQuad
+      
+      const nextLat = startCoords.lat + (endCoords.lat - startCoords.lat) * ease;
+      const nextLng = startCoords.lng + (endCoords.lng - startCoords.lng) * ease;
+      
+      setAnimatedDriverCoords({ lat: nextLat, lng: nextLng });
+
+      if (progress < 1) {
+        animId = requestAnimationFrame(tick);
+      }
+    };
+
+    animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
+  }, [driverCoords?.lat, driverCoords?.lng]);
 
   useEffect(() => {
     if (mapLibreRef.current) {
@@ -108,8 +146,8 @@ export default function CityMap({
           )}
 
           {/* Driver Marker */}
-          {driverCoords && (
-            <MapMarker longitude={driverCoords.lng} latitude={driverCoords.lat}>
+          {animatedDriverCoords && (
+            <MapMarker longitude={animatedDriverCoords.lng} latitude={animatedDriverCoords.lat}>
               <MarkerContent>
                 <div className="relative flex items-center justify-center p-2 bg-indigo-600 rounded-full border-2 border-white shadow-xl animate-bounce z-20">
                   <Navigation size={12} className="text-white fill-white transform rotate-45" />

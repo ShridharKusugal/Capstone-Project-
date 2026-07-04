@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import http from 'http';
+import * as os from 'os';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
@@ -25,7 +26,7 @@ const Driver = DriverModel as any;
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3002; // changed from 3000 to avoid conflict with Vite
 
   // Establish MongoDB connection
   await connectDB();
@@ -468,8 +469,59 @@ async function startServer() {
 
   // Bind to HTTP Server instead of Express app to enable Socket.io traffic
   httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`RideConnect Server running on port ${PORT}`);
+    printWelcomeMessage(PORT);
   });
+}
+
+function getNetworkAddress(): string | null {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      const family = iface.family;
+      if (((family as any) === 'IPv4' || (family as any) === 4) && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return null;
+}
+
+function printWelcomeMessage(port: number) {
+  const networkIP = getNetworkAddress();
+  const localUrl = `http://localhost:${port}`;
+  const networkUrl = networkIP ? `http://${networkIP}:${port}` : null;
+
+  const cyan = (text: string) => `\x1b[36m${text}\x1b[0m`;
+  const green = (text: string) => `\x1b[32m${text}\x1b[0m`;
+  const yellow = (text: string) => `\x1b[33m${text}\x1b[0m`;
+  const bold = (text: string) => `\x1b[1m${text}\x1b[0m`;
+  const gray = (text: string) => `\x1b[90m${text}\x1b[0m`;
+  const magenta = (text: string) => `\x1b[35m${text}\x1b[0m`;
+
+  console.log('\n');
+  console.log(`  ${bold(green('⚡ RideConnect – Premium Ride Booking Suite is Online! ⚡'))}`);
+  console.log(`  ${gray('------------------------------------------------------------')}`);
+  console.log(`  ${bold('Server Status:')}  ${green('ACTIVE')}`);
+  console.log(`  ${bold('Listening Port:')} ${cyan(port.toString())}`);
+  console.log(`  ${gray('------------------------------------------------------------')}`);
+  console.log(`  ${bold('Access URLs:')}`);
+  console.log(`  ➜  ${bold('Local:')}      ${cyan(localUrl + '/')}`);
+  if (networkUrl) {
+    console.log(`  ➜  ${bold('Network:')}    ${cyan(networkUrl + '/')}`);
+  }
+  console.log('');
+  console.log(`  ${bold('Web Interfaces (Ctrl + Click to Open):')}`);
+  console.log(`  🏡  ${bold('Landing:')}    ${yellow(`${localUrl}/`)}`);
+  console.log(`  📱  ${bold('Passenger:')}  ${yellow(`${localUrl}/simulator`)}`);
+  console.log(`  🚕  ${bold('Driver:')}     ${yellow(`${localUrl}/driver`)}`);
+  console.log(`  👑  ${bold('Admin:')}      ${yellow(`${localUrl}/admin`)}`);
+  console.log(`  💻  ${bold('Dev Hub:')}    ${yellow(`${localUrl}/developers`)}`);
+  console.log('');
+  console.log(`  ${bold('Diagnostics & API Endpoints:')}`);
+  console.log(`  🩺  ${bold('Health Check:')} ${magenta(`${localUrl}/api/health`)}`);
+  console.log(`  📊  ${bold('Analytics:')}    ${magenta(`${localUrl}/api/stats`)}`);
+  console.log(`  ${gray('------------------------------------------------------------')}`);
+  console.log('\n');
 }
 
 startServer();

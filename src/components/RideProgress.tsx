@@ -59,8 +59,8 @@ export default function RideProgress({
       {/* Map */}
       <div className="flex-1 overflow-hidden">
         <CityMap
-          pickup={pickupLocation?.latitude + "," + pickupLocation?.longitude ?? ""}
-          destination={destinationLocation?.latitude + "," + destinationLocation?.longitude ?? ""}
+          pickup={pickupLocation ? (pickupLocation.latitude + "," + pickupLocation.longitude) : ""}
+          destination={destinationLocation ? (destinationLocation.latitude + "," + destinationLocation.longitude) : ""}
           onSelectPickup={() => {}}
           onSelectDestination={() => {}}
           driverCoords={driverCoords}

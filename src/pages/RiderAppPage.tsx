@@ -5,15 +5,15 @@ import {
   MessageCircle, Navigation, Award, Plus, ArrowRight, Home as HomeIcon, Briefcase,
   ChevronDown, ChevronUp, Search, Clock, Zap, Shield, Car
 } from 'lucide-react';
-import CityMap from './CityMap';
+import CityMap from '../components/CityMap';
 import { Ride, WalletTransaction, SystemConfig } from '../types';
 import { getHaversineDistance, lookupLocationCoords, generateCityRoute } from '../utils/geo';
-import LocationAutocomplete from './LocationAutocomplete';
+import LocationAutocomplete from '../components/LocationAutocomplete';
 import { getRoute } from '../services/osrmService';
 import { reverseGeocode } from '../services/nominatimService';
-import RideProgress from './RideProgress';
-import PaymentScreen from './PaymentScreen';
-import RatingScreen from './RatingScreen';
+import RideProgress from '../components/RideProgress';
+import PaymentScreen from '../components/PaymentScreen';
+import RatingScreen from '../components/RatingScreen';
 
 interface Toast {
   id: string;
@@ -117,6 +117,11 @@ export default function PassengerApp({
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [userName, setUserName] = useState('Shridhar');
   const [userEmail, setUserEmail] = useState('shridhar.user@rideconnect.com');
+  const [userPhone, setUserPhone] = useState('+91 98765 43210');
+  const [homeAddress, setHomeAddress] = useState('Connaught Place, Delhi NCR');
+  const [workAddress, setWorkAddress] = useState('Cyber City, Gurugram');
+  const [memberSince] = useState('July 2024');
+  const [totalTrips] = useState(42);
 
   // Booking details
   const [pickupLocation, setPickupLocation] = useState<any>({
@@ -520,23 +525,32 @@ export default function PassengerApp({
     <div className="w-full h-full flex flex-col relative bg-slate-50 text-slate-900 overflow-hidden" id="passenger-mobile-app-root">
 
       {/* ═══════════ AUTH SCREEN ═══════════ */}
+      {/* ═══════════ AUTH SCREEN ═══════════ */}
       {step === 'auth' && (
-        <div className="flex-1 bg-slate-50 flex flex-col justify-between p-6">
-          <div className="pt-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-gradient-to-tr from-emerald-400 to-yellow-400 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/10">
+        <div className="flex-1 flex flex-col justify-between p-6 relative overflow-hidden">
+          {/* Background image overlay */}
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-30"
+            style={{ backgroundImage: 'url("/rider_auth_bg.png")' }}
+          />
+          {/* Backdrop blur & gradient overlay */}
+          <div className="absolute inset-0 bg-slate-50/75 backdrop-blur-xs z-0" />
+
+          <div className="pt-8 text-center space-y-4 relative z-10">
+            <div className="w-16 h-16 bg-gradient-to-tr from-emerald-400 to-yellow-400 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/20">
               <span className="text-3xl font-black text-slate-950">R</span>
             </div>
             <div className="space-y-1">
-              <h2 className="text-2xl font-black tracking-tight text-white flex items-center justify-center gap-1.5">
+              <h2 className="text-2xl font-black tracking-tight text-slate-900 flex items-center justify-center gap-1.5">
                 <span>RideConnect</span>
               </h2>
-              <p className="text-xs text-slate-400">Production-Grade Hailing Gateway</p>
+              <p className="text-xs text-slate-500">Production-Grade Hailing Gateway</p>
             </div>
           </div>
 
-          <form onSubmit={startLoginSubmit} className="space-y-4">
+          <form onSubmit={startLoginSubmit} className="space-y-4 relative z-10">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-400 block text-left">Passenger Name</label>
+              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-600 block text-left">Passenger Name</label>
               <input
                 type="text"
                 placeholder="Shridhar"
@@ -548,9 +562,9 @@ export default function PassengerApp({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-400 text-left block">Mobile Number (Sandbox)</label>
+              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-600 text-left block">Mobile Number (Sandbox)</label>
               <div className="flex bg-white rounded-xl border border-slate-300 items-center overflow-hidden">
-                <span className="px-3 border-r border-slate-850 text-xs text-slate-400 font-semibold font-mono">+91</span>
+                <span className="px-3 border-r border-slate-200 text-xs text-slate-500 font-semibold font-mono">+91</span>
                 <input
                   type="tel"
                   placeholder="9876543210"
@@ -578,15 +592,15 @@ export default function PassengerApp({
             </button>
           </form>
 
-          <div className="space-y-3">
+          <div className="space-y-3 relative z-10">
             <div className="flex items-center justify-center gap-2">
-              <div className="h-[1px] bg-slate-800 flex-1" />
+              <div className="h-[1px] bg-slate-300 flex-1" />
               <span className="text-[9px] uppercase font-mono tracking-wide text-slate-500">Fast Demo Pass</span>
-              <div className="h-[1px] bg-slate-800 flex-1" />
+              <div className="h-[1px] bg-slate-300 flex-1" />
             </div>
             <button
               onClick={() => setStep('app')}
-              className="w-full bg-white border border-slate-300 text-slate-350 py-2.5 rounded-xl hover:bg-slate-850 text-[10px] font-mono font-bold uppercase tracking-wider transition"
+              className="w-full bg-white border border-slate-300 text-slate-500 py-2.5 rounded-xl hover:bg-slate-100 text-[10px] font-mono font-bold uppercase tracking-wider transition"
             >
               ⏩ Skip Direct to App Mode
             </button>
@@ -596,24 +610,32 @@ export default function PassengerApp({
 
       {/* ═══════════ OTP SCREEN ═══════════ */}
       {step === 'otp' && (
-        <div className="flex-1 bg-slate-50 flex flex-col justify-between p-6">
-          <div className="pt-8 text-center space-y-2">
-            <h2 className="text-xl font-black tracking-tight text-white">Enter OTP Verification</h2>
-            <p className="text-xs text-slate-400">Sandboxed token dispatched to +91 {phoneNumber}</p>
+        <div className="flex-1 flex flex-col justify-between p-6 relative overflow-hidden">
+          {/* Background image overlay */}
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-30"
+            style={{ backgroundImage: 'url("/rider_auth_bg.png")' }}
+          />
+          {/* Backdrop blur & gradient overlay */}
+          <div className="absolute inset-0 bg-slate-50/75 backdrop-blur-xs z-0" />
+
+          <div className="pt-8 text-center space-y-2 relative z-10">
+            <h2 className="text-xl font-black tracking-tight text-slate-900">Enter OTP Verification</h2>
+            <p className="text-xs text-slate-500 font-medium">Sandboxed token dispatched to +91 {phoneNumber}</p>
           </div>
 
-          <form onSubmit={startOtpVerify} className="space-y-6">
+          <form onSubmit={startOtpVerify} className="space-y-6 relative z-10">
             <div className="space-y-2">
               <input
                 type="text"
                 placeholder="4821"
                 maxLength={4}
-                className="w-1/2 mx-auto tracking-[0.8em] text-center font-mono font-black text-2xl bg-white border border-slate-300 text-emerald-400 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500"
+                className="w-1/2 mx-auto tracking-[0.8em] text-center font-mono font-black text-2xl bg-white border border-slate-300 text-emerald-600 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500"
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value)}
                 required
               />
-              <p className="text-[10px] font-mono text-slate-500 text-center">Type default test bypass key: <b className="text-slate-400">4821</b></p>
+              <p className="text-[10px] font-mono text-slate-500 text-center">Type default test bypass key: <b className="text-slate-600">4821</b></p>
             </div>
 
             <button
@@ -634,7 +656,7 @@ export default function PassengerApp({
 
           <button
             onClick={() => setStep('auth')}
-            className="text-slate-500 text-[10px] hover:text-slate-700 font-mono uppercase font-bold"
+            className="text-slate-500 text-[10px] hover:text-slate-700 font-mono uppercase font-bold relative z-10"
           >
             Go Back & Edit Phone
           </button>
@@ -705,11 +727,9 @@ export default function PassengerApp({
                 {/* Profile avatar */}
                 <button
                   onClick={() => setActiveView('profile')}
-                  className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-sm shadow-lg flex items-center justify-center border border-white/20"
+                  className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-sm shadow-lg flex items-center justify-center border border-white/20 overflow-hidden"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-yellow-400 flex items-center justify-center font-black text-slate-950 text-xs">
-                    {userName.charAt(0).toUpperCase()}
-                  </div>
+                  <img src="/rider_avatar.png" alt="Rider Profile" className="w-8 h-8 rounded-full object-cover" />
                 </button>
 
                 {/* Search Bar (tappable) */}
@@ -1307,7 +1327,7 @@ export default function PassengerApp({
 
           {/* ── PROFILE VIEW ── */}
           {activeView === 'profile' && (
-            <div className="absolute inset-0 z-30 bg-white overflow-y-auto" style={{animation: 'fadeIn 0.2s ease-out'}}>
+            <div className="absolute inset-0 z-30 bg-white overflow-y-auto pb-20" style={{animation: 'fadeIn 0.2s ease-out'}}>
               <div className="p-4 space-y-4">
                 <div className="flex items-center gap-3 mb-2">
                   <button onClick={() => setActiveView('map')} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
@@ -1317,40 +1337,97 @@ export default function PassengerApp({
                 </div>
 
                 {/* Avatar Card */}
-                <div className="text-center py-6 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 relative overflow-hidden">
-                  <div className="w-16 h-16 bg-gradient-to-tr from-emerald-500 to-yellow-400 rounded-full mx-auto flex items-center justify-center text-slate-950 font-black text-2xl shadow-lg">
-                    {userName.charAt(0).toUpperCase()}
+                <div className="text-center py-6 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 relative overflow-hidden flex flex-col items-center">
+                  <div className="relative">
+                    <img 
+                      src="/rider_avatar.png" 
+                      alt="Rider Profile" 
+                      className="w-20 h-20 rounded-full object-cover shadow-lg border-2 border-emerald-500/30" 
+                    />
+                    <span className="absolute bottom-0 right-0 bg-emerald-500 text-white rounded-full p-1 border border-white text-[8px] font-black uppercase tracking-wider px-1.5 shadow-sm">
+                      Active
+                    </span>
                   </div>
-                  <h4 className="text-sm font-black mt-3 text-slate-900">{userName}</h4>
-                  <p className="text-[10px] text-slate-500 mt-0.5">{userEmail}</p>
+                  <h4 className="text-base font-black mt-3 text-slate-900">{userName}</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">{userEmail}</p>
+                  <div className="mt-2.5 flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold py-1 px-3 rounded-full border border-emerald-100 uppercase tracking-wider">
+                    <span>✨ Gold Member</span>
+                  </div>
                 </div>
 
-                {/* Settings */}
-                <div className="rounded-2xl p-4 border border-slate-200 bg-slate-50 space-y-3">
-                  <span className="text-[10px] font-semibold text-slate-500 block uppercase tracking-wider">User details</span>
-                  <div className="space-y-2.5 text-xs">
+                {/* Rider Stats Grid */}
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                    <span className="text-[9px] font-mono text-slate-500 uppercase block">Wallet</span>
+                    <span className="text-xs font-black text-slate-800 block mt-0.5">₹{walletBalance.toFixed(0)}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                    <span className="text-[9px] font-mono text-slate-500 uppercase block">Trips</span>
+                    <span className="text-xs font-black text-slate-800 block mt-0.5">{totalTrips} Rides</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                    <span className="text-[9px] font-mono text-slate-500 uppercase block">Since</span>
+                    <span className="text-xs font-black text-slate-800 block mt-0.5">{memberSince}</span>
+                  </div>
+                </div>
+
+                {/* Settings Form */}
+                <div className="rounded-2xl p-4 border border-slate-200 bg-slate-50 space-y-4">
+                  <span className="text-[10px] font-black text-slate-600 block uppercase tracking-wider border-b border-slate-200 pb-1.5">User details</span>
+                  <div className="space-y-3.5 text-xs">
                     <div>
-                      <span className="text-[8.5px] text-slate-500 uppercase block mb-1 font-bold">Display Name</span>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">Display Name</span>
                       <input
                         type="text"
-                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-emerald-500 bg-white text-slate-800 text-xs font-medium"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-emerald-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
                         value={userName}
                         onChange={(e) => setUserName(e.target.value)}
                       />
                     </div>
                     <div>
-                      <span className="text-[8.5px] text-slate-500 uppercase block mb-1 font-bold">Email</span>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">Email Address</span>
                       <input
                         type="email"
-                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-emerald-500 bg-white text-slate-800 text-xs font-medium"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-emerald-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
                         value={userEmail}
                         onChange={(e) => setUserEmail(e.target.value)}
                       />
                     </div>
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">Mobile Number</span>
+                      <input
+                        type="text"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-emerald-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
+                        value={userPhone}
+                        onChange={(e) => setUserPhone(e.target.value)}
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-1.5 pt-2 border-t border-slate-200">
-                    <span className="text-[8.5px] text-slate-500 uppercase block font-bold">Preferences</span>
+                  <span className="text-[10px] font-black text-slate-600 block uppercase tracking-wider border-b border-slate-200 pb-1.5 pt-2">Saved Addresses</span>
+                  <div className="space-y-3.5 text-xs">
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">🏠 Home Address</span>
+                      <input
+                        type="text"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-emerald-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
+                        value={homeAddress}
+                        onChange={(e) => setHomeAddress(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">💼 Work Address</span>
+                      <input
+                        type="text"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-emerald-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
+                        value={workAddress}
+                        onChange={(e) => setWorkAddress(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 pt-3 border-t border-slate-200">
+                    <span className="text-[9px] text-slate-500 uppercase block font-bold mb-1">Preferences</span>
                     <PrefToggle label="Push Notifications" emoji="🔔" defaultOn={true} />
                     <PrefToggle label="Email Receipts" emoji="📧" defaultOn={true} />
                   </div>
@@ -1358,7 +1435,7 @@ export default function PassengerApp({
 
                 <button
                   onClick={() => setStep('auth')}
-                  className="w-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-1"
+                  className="w-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-1.5"
                 >
                   <LogOut size={12} />
                   <span>Logout Account</span>

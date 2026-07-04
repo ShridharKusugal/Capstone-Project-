@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { ChatMessage } from '../types';
+import { ChatMessage, Ride } from '../types';
 
 export interface RideState {
   id: string;
@@ -10,7 +10,7 @@ export interface RideState {
   destination: string;
   pickupCoords: { lat: number; lng: number };
   destinationCoords: { lat: number; lng: number };
-  status: 'pending' | 'searching' | 'accepted' | 'arriving' | 'arrived' | 'active' | 'completed' | 'cancelled' | 'failed';
+  status: Ride['status'];
   fare: number;
   distance: number;
   eta: number;

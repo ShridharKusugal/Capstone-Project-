@@ -17,12 +17,21 @@ export interface Driver {
   avatar: string;
   status: 'online' | 'offline';
   isVerified: boolean;
-  documents: {
-    license: string;
-    insurance: string;
-    backgroundCheck: string;
+  documents?: {
+    license?: string;
+    insurance?: string;
+    backgroundCheck?: string;
+    profilePhoto?: DocumentMeta;
+    aadhaarFront?: DocumentMeta;
+    aadhaarBack?: DocumentMeta;
+    drivingLicenseFront?: DocumentMeta;
+    drivingLicenseBack?: DocumentMeta;
+    vehicleRC?: DocumentMeta;
+    vehicleInsurance?: DocumentMeta;
+    vehiclePUC?: DocumentMeta;
+    selfieVerification?: DocumentMeta;
   };
-  vehicle: {
+  vehicle?: VehicleInfo | {
     model: string;
     plate: string;
     color: string;
@@ -31,6 +40,7 @@ export interface Driver {
   rating: number;
   tripsCount: number;
   walletBalance: number;
+  verificationStatus?: VerificationStatus;
 }
 
 export interface Point {
@@ -123,4 +133,32 @@ export interface SystemConfig {
   };
   demandMultiplier: number; // Dynamic Pricing Control: 1.0 - 2.5
   trafficFactor: 'light' | 'moderate' | 'heavy' | 'gridlock';
+} 
+
+// Driver onboarding related types
+export interface DocumentMeta {
+  url: string; // stored file URL or path
+  fileName: string;
+  mimeType: string;
+  uploadedAt: string; // ISO date string
 }
+
+export interface VehicleInfo {
+  type: 'Bike' | 'Auto' | 'Car' | 'SUV' | 'Mini Van';
+  brand: string;
+  model: string;
+  color: string;
+  manufacturingYear: number;
+  registrationNumber: string;
+  seatingCapacity: number;
+}
+
+export type VerificationStatus = 'Pending' | 'Under Review' | 'Approved' | 'Rejected';
+
+export interface AuthResponse {
+  token: string;
+  driver: Driver;
+}
+
+// Driver interface is unified at the top of types.ts
+

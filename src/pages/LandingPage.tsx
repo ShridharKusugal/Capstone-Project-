@@ -121,20 +121,20 @@ export default function LandingPage({}: LandingPageProps = {}) {
       <section className="relative z-10 max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-widest mb-8 ${isDarkMode ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400' : 'border-emerald-300 bg-emerald-50 text-emerald-600'}`}>
           <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-          <span>Production-grade · Live Sandbox · Gemini AI</span>
+          <span>Next-Gen Routing · Live Socket Tracking · Gemini AI</span>
         </div>
 
         <h1 className={`text-6xl sm:text-8xl font-black tracking-tighter leading-none mb-6 ${isDarkMode ? 'text-white' : 'text-slate-950'}`}>
-          The Future of
+          The New Standard in
           <br />
           <span className="bg-gradient-to-r from-emerald-400 via-yellow-400 to-amber-400 bg-clip-text text-transparent">
-            Urban Mobility
+            Urban Transit
           </span>
         </h1>
 
         <p className={`text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed ${mutedText}`}>
-          A production-ready, full-stack ride-hailing platform featuring real-time Socket.io tracking,
-          Gemini AI fare intelligence, MongoDB persistence, and live simulated city routing.
+          Experience a premium, end-to-end ride booking suite driven by real-time Socket.io driver telemetry,
+          intelligent Gemini AI fare models, and secure MongoDB ledger storage.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4">

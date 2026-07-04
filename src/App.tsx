@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -9,11 +9,12 @@ import {
 } from 'lucide-react';
 import { Ride, SystemConfig, Complaint, PromoCode, WalletTransaction } from './types';
 import CityMap, { PREDEFINED_LOCATIONS } from './components/CityMap';
-import PassengerApp from './components/PassengerApp';
-import DriverApp from './components/DriverApp';
-import AdminPanel from './components/AdminPanel';
-import CodeHub from './components/CodeHub';
-import LandingPage from './components/LandingPage';
+import RiderAppPage from './pages/RiderAppPage';
+import DriverAppPage from './pages/DriverAppPage';
+import AdminPanelPage from './pages/AdminPanelPage';
+import CodeHubPage from './pages/CodeHubPage';
+import LandingPage from './pages/LandingPage';
+import DeviceWrapper from './layouts/DeviceWrapper';
 import { generateCityRoute, getHaversineDistance, lookupLocationCoords } from './utils/geo';
 import useSocket from './hooks/useSocket';
 
@@ -32,13 +33,15 @@ const findPredefinedLocation = (name: string) => {
   return { name, lat: 28.6304, lng: 77.2177 }; // Default Delhi coords if lookup fails
 };
 
-// SimulatorsLayout removed for unified centered mobile phone layout redirection.
 
 
-export default function App() {
+
+function App() {
   const dispatch = useDispatch();
 
   const [phoneClock, setPhoneClock] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  const [deviceMode, setDeviceMode] = useState<'ios' | 'android'>('ios');
+  
   useEffect(() => {
     const t = setInterval(() => setPhoneClock(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })), 15000);
     return () => clearInterval(t);
@@ -50,6 +53,7 @@ export default function App() {
   const passengerWallet = useSelector((state: RootState) => state.auth.user ? state.auth.user.walletBalance : 15000.00);
   const driverOnline = useSelector((state: RootState) => state.auth.driverOnline);
   const driverWallet = useSelector((state: RootState) => state.auth.user && state.auth.user.role === 'driver' ? state.auth.user.walletBalance : 4500.00);
+  const accessToken = useSelector((state: RootState) => state.auth.accessToken);
 
   // Local Fast Ticking states (telemetry and simulations)
   const isDarkMode = false;
@@ -152,17 +156,52 @@ export default function App() {
 
   const syncWithBackendPool = async () => {
     try {
-      const resp = await fetch('/api/rides');
-      const data = await resp.json();
-      if (data.status === 'success') {
-        dispatch(setRideHistory(data.rides));
-        const matchingActive = data.rides.find((r: Ride) => r.status !== 'completed' && r.status !== 'cancelled');
-        if (matchingActive) {
-          dispatch(setCurrentRide(matchingActive));
-        } else if (currentRide && (currentRide.status === 'completed' || currentRide.status === 'cancelled')) {
-          // Keep completed active
-        } else {
-          dispatch(setCurrentRide(null));
+      if (accessToken) {
+        // Fetch active ride for the authenticated user
+        const activeResp = await fetch('/api/v1/rides/active', {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const activeData = await activeResp.json();
+        if (activeData.status === 'success') {
+          if (activeData.ride) {
+            // Map _id from backend to id expected by frontend type
+            const formattedRide = {
+              ...activeData.ride,
+              id: activeData.ride._id || activeData.ride.id
+            };
+            dispatch(setCurrentRide(formattedRide));
+          } else if (currentRide && (currentRide.status === 'completed' || currentRide.status === 'cancelled')) {
+            // Keep completed/cancelled active for rating/invoice screens
+          } else {
+            dispatch(setCurrentRide(null));
+          }
+        }
+
+        // Fetch user's ride history
+        const historyResp = await fetch('/api/v1/rides/history', {
+          headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        const historyData = await historyResp.json();
+        if (historyData.status === 'success') {
+          const formattedHistory = historyData.rides.map((r: any) => ({
+            ...r,
+            id: r._id || r.id
+          }));
+          dispatch(setRideHistory(formattedHistory));
+        }
+      } else {
+        const resp = await fetch('/api/rides');
+        const data = await resp.json();
+        if (data.status === 'success') {
+          dispatch(setRideHistory(data.rides));
+          const matchingActive = data.rides.find((r: Ride) => r.status !== 'completed' && r.status !== 'cancelled');
+          if (matchingActive) {
+            dispatch(setCurrentRide(matchingActive));
+          } else if (currentRide && (currentRide.status === 'completed' || currentRide.status === 'cancelled')) {
+            // Keep completed active
+          } else {
+            dispatch(setCurrentRide(null));
+          }
         }
       }
     } catch (err) {
@@ -290,9 +329,15 @@ export default function App() {
     const destinationCoords = params.destinationCoords || { lat: dLoc.lat, lng: dLoc.lng };
 
     try {
-      const resp = await fetch('/api/rides/book', {
+      const url = accessToken ? '/api/v1/rides/book' : '/api/rides/book';
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const resp = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify({
           pickup: params.pickup,
           destination: params.destination,
@@ -308,7 +353,11 @@ export default function App() {
       });
       const data = await resp.json();
       if (data.status === 'success') {
-        dispatch(setCurrentRide(data.ride));
+        const formattedRide = {
+          ...data.ride,
+          id: data.ride._id || data.ride.id
+        };
+        dispatch(setCurrentRide(formattedRide));
         syncWithBackendPool();
       }
     } catch (err) {
@@ -318,18 +367,27 @@ export default function App() {
 
   const handleUpdateRideStatus = async (rideId: string, status: Ride['status']) => {
     try {
-      const resp = await fetch(`/api/rides/${rideId}/status`, {
+      const url = accessToken ? `/api/v1/rides/${rideId}/status` : `/api/rides/${rideId}/status`;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const resp = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify({ status })
       });
       const data = await resp.json();
       if (data.status === 'success') {
-        const updated = data.ride;
+        const formattedRide = {
+          ...data.ride,
+          id: data.ride._id || data.ride.id
+        };
         if (status === 'completed' && currentRide) {
           processTransactionFinances(currentRide);
         }
-        dispatch(setCurrentRide(updated));
+        dispatch(setCurrentRide(formattedRide));
         syncWithBackendPool();
       }
     } catch (err) {
@@ -344,15 +402,25 @@ export default function App() {
       return;
     }
     try {
-      const resp = await fetch(`/api/rides/${currentRide.id}/accept`, {
+      const url = accessToken ? `/api/v1/rides/${currentRide.id}/accept` : `/api/rides/${currentRide.id}/accept`;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const resp = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify({ driverId, driverName: name })
       });
       const data = await resp.json();
       console.log('[DEBUG] handleAcceptRide response:', data);
       if (data.status === 'success') {
-        dispatch(setCurrentRide(data.ride));
+        const formattedRide = {
+          ...data.ride,
+          id: data.ride._id || data.ride.id
+        };
+        dispatch(setCurrentRide(formattedRide));
         syncWithBackendPool();
       } else {
         alert(`Failed to accept ride: ${data.message || 'Unknown backend error'}`);
@@ -382,12 +450,41 @@ export default function App() {
     dispatch(setCurrentRide(null));
   };
 
+  const handleSetDriverOnline = async (status: boolean) => {
+    dispatch(setDriverOnlineStatus(status));
+    
+    if (accessToken) {
+      try {
+        await fetch('/api/v1/users/driver/online', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({ isOnline: status })
+        });
+      } catch (err) {
+        console.error('Failed to update online status on backend:', err);
+      }
+    }
+  };
+
+  const handleToggleDriverOnline = async () => {
+    await handleSetDriverOnline(!driverOnline);
+  };
+
   const handleCompleteRating = async (rating: number, review: string) => {
     if (!currentRide) return;
     try {
-      await fetch(`/api/rides/${currentRide.id}/review`, {
+      const url = accessToken ? `/api/v1/rides/${currentRide.id}/review` : `/api/rides/${currentRide.id}/review`;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
+      await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify({ rating, review })
       });
     } catch (err) {}
@@ -462,7 +559,7 @@ export default function App() {
     setSelectedDestination,
     systemConfig,
     driverOnline,
-    setDriverOnline: (status: boolean) => dispatch(setDriverOnlineStatus(status)),
+    setDriverOnline: handleSetDriverOnline,
     activeRoute,
     currentStepIndex,
     setAccumulatedDistance,
@@ -504,7 +601,7 @@ export default function App() {
               <div className="flex justify-between items-center font-mono">
                 <Link to="/" className="text-slate-400 hover:text-slate-200 text-xs">◀ Back to Home</Link>
               </div>
-              <CodeHub />
+              <CodeHubPage />
             </div>
           </div>
         } />
@@ -513,15 +610,15 @@ export default function App() {
         <Route path="/simulator" element={
           <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
             {/* Quick Nav Bar */}
-            <div className="mb-3 flex items-center gap-2 w-full max-w-[420px] font-mono text-xs">
-              <Link to="/" className="text-slate-500 hover:text-emerald-400 text-[10px] font-bold transition">← Home</Link>
+            <div className="mb-4 flex items-center gap-2 w-full max-w-[440px] font-mono text-[10px]">
+              <Link to="/" className="text-slate-500 hover:text-emerald-400 font-bold transition">← Home</Link>
               <div className="flex-1" />
-              <Link to="/driver" target="_blank" className="bg-amber-500/90 hover:bg-amber-500 text-slate-950 px-2.5 py-1 rounded-lg font-bold transition text-[10px]">Driver ➔</Link>
-              <Link to="/admin" target="_blank" className="bg-cyan-500/90 hover:bg-cyan-500 text-slate-950 px-2.5 py-1 rounded-lg font-bold transition text-[10px]">Admin ➔</Link>
+              <Link to="/driver" target="_blank" className="bg-amber-500/90 hover:bg-amber-500 text-slate-950 px-2.5 py-1 rounded-lg font-bold transition">Driver ➔</Link>
+              <Link to="/admin" target="_blank" className="bg-cyan-500/90 hover:bg-cyan-500 text-slate-950 px-2.5 py-1 rounded-lg font-bold transition">Admin ➔</Link>
             </div>
 
-            <div className="w-full max-w-[420px] h-[880px] bg-white rounded-[36px] shadow-2xl shadow-black/50 overflow-hidden relative flex flex-col border border-slate-200/50" id="smartphone-mockup-frame">
-              <PassengerApp
+            <DeviceWrapper mode={deviceMode} setMode={setDeviceMode} phoneClock={phoneClock} themeColor="emerald">
+              <RiderAppPage
                 currentRide={enrichedRide}
                 onRequestRide={handleRequestRide}
                 onCancelRide={handleCancelRide}
@@ -542,7 +639,7 @@ export default function App() {
                 activeRoute={activeRoute}
                 currentStepIndex={currentStepIndex}
               />
-            </div>
+            </DeviceWrapper>
           </div>
         } />
 
@@ -550,13 +647,11 @@ export default function App() {
         {/* Standalone Rider Web App – Clean Mobile Layout */}
         <Route path="/rider" element={
           <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-            <div className="mb-3 flex items-center gap-2 w-full max-w-[420px] font-mono text-xs">
-              <Link to="/" className="text-slate-500 hover:text-emerald-400 text-[10px] font-bold transition">← Home</Link>
-              <div className="flex-1" />
-              <Link to="/driver" target="_blank" className="bg-amber-500/90 hover:bg-amber-500 text-slate-950 px-2.5 py-1 rounded-lg font-bold transition text-[10px]">Driver ➔</Link>
+            <div className="mb-4 flex items-center gap-2 w-full max-w-[440px] font-mono text-[10px]">
+              <Link to="/" className="text-slate-500 hover:text-emerald-400 font-bold transition">← Home</Link>
             </div>
-            <div className="w-full max-w-[420px] h-[880px] bg-white rounded-[36px] shadow-2xl shadow-black/50 overflow-hidden relative flex flex-col border border-slate-200/50">
-              <PassengerApp
+            <DeviceWrapper mode={deviceMode} setMode={setDeviceMode} phoneClock={phoneClock} themeColor="emerald">
+              <RiderAppPage
                 currentRide={enrichedRide}
                 onRequestRide={handleRequestRide}
                 onCancelRide={handleCancelRide}
@@ -574,23 +669,23 @@ export default function App() {
                 socketProps={socketProps}
                 ridesList={ridesList}
               />
-            </div>
+            </DeviceWrapper>
           </div>
         } />
 
         {/* Standalone Driver Web App – Clean Mobile Layout */}
         <Route path="/driver" element={
           <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-            <div className="mb-3 flex items-center gap-2 w-full max-w-[420px] font-mono text-xs">
-              <Link to="/" className="text-slate-500 hover:text-amber-500 text-[10px] font-bold transition">← Home</Link>
+            <div className="mb-4 flex items-center gap-2 w-full max-w-[440px] font-mono text-[10px]">
+              <Link to="/" className="text-slate-500 hover:text-amber-500 font-bold transition">← Home</Link>
               <div className="flex-1" />
-              <Link to="/simulator" target="_blank" className="bg-emerald-500/90 hover:bg-emerald-500 text-slate-950 px-2.5 py-1 rounded-lg font-bold transition text-[10px]">Rider ➔</Link>
+              <Link to="/simulator" target="_blank" className="bg-emerald-500/90 hover:bg-emerald-500 text-slate-950 px-2.5 py-1 rounded-lg font-bold transition">Rider ➔</Link>
             </div>
-            <div className="w-full max-w-[420px] h-[880px] bg-white rounded-[36px] shadow-2xl shadow-amber-500/10 overflow-hidden relative flex flex-col border border-slate-200/50">
-              <DriverApp
+            <DeviceWrapper mode={deviceMode} setMode={setDeviceMode} phoneClock={phoneClock} themeColor="amber">
+              <DriverAppPage
                 currentRide={enrichedRide}
                 driverOnline={driverOnline}
-                onToggleOnline={() => dispatch(setDriverOnlineStatus(!driverOnline))}
+                onToggleOnline={handleToggleDriverOnline}
                 onAcceptRide={handleAcceptRide}
                 onRejectRide={() => handleUpdateRideStatus(enrichedRide!.id, 'cancelled')}
                 onStartRide={() => handleUpdateRideStatus(enrichedRide!.id, 'active')}
@@ -598,8 +693,10 @@ export default function App() {
                 driverWalletBalance={driverWallet}
                 isDarkMode={isDarkMode}
                 socketProps={socketProps}
+                driverCoords={liveDriverCoords}
+                activeRoute={activeRoute}
               />
-            </div>
+            </DeviceWrapper>
           </div>
         } />
 
@@ -620,7 +717,7 @@ export default function App() {
                   </button>
                 </div>
               </div>
-              <AdminPanel
+              <AdminPanelPage
                 ridesList={ridesList}
                 systemConfig={systemConfig}
                 onUpdateConfig={(cfg: any) => setSystemConfig(cfg)}
@@ -647,3 +744,5 @@ export default function App() {
     </BrowserRouter>
   );
 }
+export default App;
+

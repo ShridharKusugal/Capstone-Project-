@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   ShieldAlert, Award, Star, Loader,
   Check, X, Navigation, User,
-  Send, MessageCircle, Phone, Menu, Sliders
+  Send, MessageCircle, Phone, Menu, Sliders,
+  ArrowRight, LogOut
 } from 'lucide-react';
 import { Ride } from '../types';
-import CityMap from './CityMap';
+import CityMap from '../components/CityMap';
 
 interface DriverToast {
   id: string;
@@ -25,6 +26,8 @@ interface DriverAppProps {
   driverWalletBalance: number;
   isDarkMode?: boolean;
   socketProps?: any;
+  driverCoords?: { lat: number; lng: number } | null;
+  activeRoute?: { lat: number; lng: number }[];
 }
 
 export default function DriverApp({
@@ -37,13 +40,16 @@ export default function DriverApp({
   onCompleteRide,
   driverWalletBalance,
   isDarkMode = false,
-  socketProps
+  socketProps,
+  driverCoords = null,
+  activeRoute = []
 }: DriverAppProps) {
   const [step, setStep] = useState<'auth' | 'app'>('auth');
 
   // Bottom sheet state: 'collapsed' | 'expanded'
   const [sheetState, setSheetState] = useState<'collapsed' | 'expanded'>('collapsed');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   // Toast notification system
   const [toasts, setToasts] = useState<DriverToast[]>([]);
@@ -137,7 +143,49 @@ export default function DriverApp({
   const [driverName, setDriverName] = useState('Alex Pro Driver');
   const [carModel, setCarModel] = useState('Tesla Model Y');
   const [carPlate, setCarPlate] = useState('NYC-4821');
+  const [driverEmail, setDriverEmail] = useState('alex.driver@rideconnect.com');
+  const [driverPhone, setDriverPhone] = useState('+91 99999 88888');
+  // Duplicate showProfile state removed (kept declaration at line 51)
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const getNavInstruction = () => {
+    if (!currentRide) return '';
+    if (!activeRoute || activeRoute.length === 0 || !driverCoords) {
+      if (currentRide.status === 'accepted' || currentRide.status === 'arriving') {
+        return `Navigate to pickup: ${currentRide.pickup.split(',')[0]}`;
+      }
+      if (currentRide.status === 'active') {
+        return `Navigate to destination: ${currentRide.destination.split(',')[0]}`;
+      }
+      return '';
+    }
+    
+    let minIndex = 0;
+    let minDistance = Infinity;
+    for (let i = 0; i < activeRoute.length; i++) {
+      const d = Math.hypot(activeRoute[i].lat - driverCoords.lat, activeRoute[i].lng - driverCoords.lng);
+      if (d < minDistance) {
+        minDistance = d;
+        minIndex = i;
+      }
+    }
+    
+    const progressPercent = (minIndex / (activeRoute.length - 1)) * 100;
+    const isHeadingToPickup = currentRide.status === 'accepted' || currentRide.status === 'arriving';
+    const targetPlace = isHeadingToPickup ? currentRide.pickup.split(',')[0] : currentRide.destination.split(',')[0];
+    
+    if (progressPercent < 15) {
+      return `Head north toward ${targetPlace}`;
+    } else if (progressPercent < 45) {
+      return `In 200m, turn right onto Main Avenue`;
+    } else if (progressPercent < 75) {
+      return `Merge left and continue straight for 800m`;
+    } else if (progressPercent < 95) {
+      return `Approaching your destination: ${targetPlace}`;
+    } else {
+      return `Arrived at ${targetPlace}`;
+    }
+  };
 
   const [offerTimer, setOfferTimer] = useState(15);
 
@@ -172,23 +220,31 @@ export default function DriverApp({
 
       {/* ═══════════ AUTH SCREEN ═══════════ */}
       {step === 'auth' && (
-        <div className="flex-1 bg-slate-50 flex flex-col justify-between p-6">
-          <div className="pt-8 text-center space-y-4">
+        <div className="flex-1 flex flex-col justify-between p-6 relative overflow-hidden">
+          {/* Background image overlay */}
+          <div 
+            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-30"
+            style={{ backgroundImage: 'url("/driver_auth_bg.png")' }}
+          />
+          {/* Backdrop blur & gradient overlay */}
+          <div className="absolute inset-0 bg-slate-50/75 backdrop-blur-xs z-0" />
+
+          <div className="pt-8 text-center space-y-4 relative z-10">
             <div className="w-16 h-16 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-amber-500/20">
               <span className="text-3xl font-black text-slate-950">D</span>
             </div>
             <div className="space-y-1">
-              <h2 className="text-2xl font-black tracking-tight text-white">RideConnect Driver</h2>
-              <p className="text-xs text-slate-400">Accept, navigate, and earn.</p>
+              <h2 className="text-2xl font-black tracking-tight text-slate-900">RideConnect Driver</h2>
+              <p className="text-xs text-slate-500">Accept, navigate, and earn.</p>
             </div>
           </div>
 
-          <form onSubmit={performLogin} className="space-y-3">
+          <form onSubmit={performLogin} className="space-y-3 relative z-10">
             <div className="space-y-1">
-              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-400">Driver License Registry Name</label>
+              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-600">Driver License Registry Name</label>
               <input
                 type="text"
-                className="w-full bg-white border border-slate-300 text-white rounded-xl py-2.5 px-4 text-xs focus:outline-none focus:border-amber-500"
+                className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl py-2.5 px-4 text-xs focus:outline-none focus:border-amber-500"
                 value={driverName}
                 onChange={(e) => setDriverName(e.target.value)}
                 required
@@ -196,10 +252,10 @@ export default function DriverApp({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-400">Vehicle Model Class</label>
+              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-600">Vehicle Model Class</label>
               <input
                 type="text"
-                className="w-full bg-white border border-slate-300 text-white rounded-xl py-2.5 px-4 text-xs focus:outline-none focus:border-amber-500"
+                className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl py-2.5 px-4 text-xs focus:outline-none focus:border-amber-500"
                 value={carModel}
                 onChange={(e) => setCarModel(e.target.value)}
                 required
@@ -207,10 +263,10 @@ export default function DriverApp({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-400">License Plate Number</label>
+              <label className="text-[10px] font-mono tracking-wider uppercase text-slate-600">License Plate Number</label>
               <input
                 type="text"
-                className="w-full bg-white border border-slate-300 text-white rounded-xl py-2.5 px-4 text-xs focus:outline-none"
+                className="w-full bg-white border border-slate-300 text-slate-900 rounded-xl py-2.5 px-4 text-xs focus:outline-none"
                 value={carPlate}
                 onChange={(e) => setCarPlate(e.target.value)}
                 required
@@ -235,7 +291,7 @@ export default function DriverApp({
 
           <button
             onClick={() => setStep('app')}
-            className="w-full bg-white border border-slate-300 text-slate-350 py-2.5 rounded-xl hover:bg-slate-850 text-[10px] font-mono font-bold uppercase tracking-wider transition"
+            className="w-full bg-white border border-slate-300 text-slate-500 py-2.5 rounded-xl hover:bg-slate-100 text-[10px] font-mono font-bold uppercase tracking-wider transition relative z-10"
           >
             ⏩ Skip Direct to App Mode
           </button>
@@ -254,6 +310,8 @@ export default function DriverApp({
                onSelectPickup={() => {}}
                onSelectDestination={() => {}}
                rideStatus={currentRide?.status}
+               driverCoords={driverCoords || undefined}
+               activeRoute={activeRoute}
                isDarkMode={false} // Drivers typically use dark mode for nav
                hideControls={true}
              />
@@ -311,8 +369,8 @@ export default function DriverApp({
             
             {/* Active Ride Pill */}
             {currentRide && (
-              <div className="px-5 py-2.5 rounded-full bg-white/95 border border-slate-700 text-white font-black text-xs tracking-wider shadow-lg backdrop-blur-md flex items-center gap-2">
-                <Navigation size={12} className="text-amber-400 animate-pulse" />
+              <div className="px-5 py-2.5 rounded-full bg-white/95 border border-slate-200 text-slate-800 font-black text-xs tracking-wider shadow-lg backdrop-blur-md flex items-center gap-2">
+                <Navigation size={12} className="text-amber-500 animate-pulse" />
                 <span>
                   {currentRide.status === 'requested' ? 'REQUEST' :
                    currentRide.status === 'accepted' || currentRide.status === 'arriving' ? 'EN ROUTE TO PICKUP' :
@@ -327,6 +385,23 @@ export default function DriverApp({
                <span>₹{driverWalletBalance.toFixed(0)}</span>
             </div>
           </div>
+
+          {/* ── Turn-by-Turn Navigation Bar ── */}
+          {currentRide && ['accepted', 'arriving', 'active'].includes(currentRide.status) && (
+            <div className="absolute top-16 inset-x-3 z-20 bg-emerald-600/95 backdrop-blur text-white px-4 py-3 rounded-2xl shadow-lg border border-emerald-500/30 flex items-center gap-3 animate-in slide-in-from-top duration-300">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <Navigation size={16} className="rotate-45 text-white fill-white" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <span className="text-[9px] font-black tracking-widest text-emerald-100 uppercase block">Navigation Guidance</span>
+                <span className="text-xs font-bold truncate block mt-0.5">{getNavInstruction()}</span>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-xs font-black block">{currentRide.eta || '3'} min</span>
+                <span className="text-[8px] text-emerald-100 uppercase font-mono block">Remaining</span>
+              </div>
+            </div>
+          )}
 
           {/* ── Center GO Button (When Offline) ── */}
           {!driverOnline && !currentRide && (
@@ -363,9 +438,11 @@ export default function DriverApp({
                <div className="p-6 flex-1 flex flex-col">
                  <div className="flex justify-between items-center mb-8">
                    <div className="flex items-center gap-3">
-                     <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-xl font-black text-slate-900 shadow-lg">
-                       {driverName.charAt(0)}
-                     </div>
+                     <img 
+                       src="/driver_avatar.png" 
+                       alt="Driver Profile" 
+                       className="w-12 h-12 rounded-full object-cover shadow-lg border border-amber-500/20" 
+                     />
                      <div>
                        <h3 className="font-bold text-slate-900 text-lg">{driverName}</h3>
                        <p className="text-amber-500 text-xs font-mono">★ 4.92 Rating</p>
@@ -378,11 +455,15 @@ export default function DriverApp({
 
                  <div className="space-y-2">
                    {[
-                     { icon: <Award size={20} />, label: 'Earnings', val: `₹${driverWalletBalance.toFixed(0)}` },
-                     { icon: <User size={20} />, label: 'Account', val: carPlate },
-                     { icon: <Sliders size={20} />, label: 'Preferences', val: 'All trips' }
+                     { icon: <Award size={20} />, label: 'Earnings', val: `₹${driverWalletBalance.toFixed(0)}`, action: undefined },
+                     { icon: <User size={20} />, label: 'Profile Settings', val: carPlate, action: () => { setShowProfile(true); setMenuOpen(false); } },
+                     { icon: <Sliders size={20} />, label: 'Preferences', val: 'All trips', action: undefined }
                    ].map((item, i) => (
-                     <div key={i} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-300">
+                     <div 
+                       key={i} 
+                       onClick={item.action}
+                       className={`flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-300 ${item.action ? 'cursor-pointer hover:bg-slate-100 transition' : ''}`}
+                     >
                        <div className="flex items-center gap-3 text-slate-700">
                          {item.icon}
                          <span className="font-semibold text-sm">{item.label}</span>
@@ -407,6 +488,47 @@ export default function DriverApp({
                </div>
             </div>
           )}
+{showProfile && (
+  <div className="absolute inset-0 z-30 bg-white overflow-y-auto pb-20" style={{animation:'fadeIn 0.2s ease-out'}}>
+    <div className="p-4 space-y-4">
+      <div className="flex items-center gap-3 mb-2">
+        <button onClick={() => setShowProfile(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+          <ArrowRight size={14} className="text-slate-600 rotate-180" />
+        </button>
+        <h2 className="text-base font-black text-slate-900">Driver Profile</h2>
+      </div>
+      <div className="text-center py-6 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 relative overflow-hidden flex flex-col items-center">
+        <div className="relative">
+          <img src="/driver_avatar.png" alt="Driver Profile" className="w-20 h-20 rounded-full object-cover shadow-lg border-2 border-emerald-500/30" />
+          <span className="absolute bottom-0 right-0 bg-emerald-500 text-white rounded-full p-1 border border-white text-[8px] font-black uppercase tracking-wider px-1.5 shadow-sm">Active</span>
+        </div>
+        <h4 className="text-base font-black mt-3 text-slate-900">{driverName}</h4>
+        <p className="text-xs text-slate-500 mt-0.5">{driverEmail}</p>
+        <div className="mt-2.5 flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold py-1 px-3 rounded-full border border-emerald-100 uppercase tracking-wider">
+          <span>🚗 Driver</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-2.5">
+        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+          <span className="text-[9px] font-mono text-slate-500 uppercase block">Earnings</span>
+          <span className="text-xs font-black text-slate-800 block mt-0.5">₹{driverWalletBalance.toFixed(0)}</span>
+        </div>
+        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+          <span className="text-[9px] font-mono text-slate-500 uppercase block">Car</span>
+          <span className="text-xs font-black text-slate-800 block mt-0.5">{carModel}</span>
+        </div>
+        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+          <span className="text-[9px] font-mono text-slate-500 uppercase block">Plate</span>
+          <span className="text-xs font-black text-slate-800 block mt-0.5">{carPlate}</span>
+        </div>
+      </div>
+      <button onClick={() => setShowProfile(false)} className="w-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold text-xs py-3 rounded-xl transition flex items-center justify-center gap-1.5">
+        <LogOut size={12} />
+        <span>Close Profile</span>
+      </button>
+    </div>
+  </div>
+)}
 
           {/* ── Bottom Sheet (Incoming Request & Active Trip) ── */}
           {currentRide && (
@@ -537,7 +659,7 @@ export default function DriverApp({
                     <div className="pt-2">
                       {currentRide.status === 'accepted' && (
                         <button 
-                          className="w-full py-4 rounded-full bg-white text-white font-black text-sm tracking-widest flex items-center justify-center transition hover:bg-slate-800 shadow-md"
+                          className="w-full py-4 rounded-full bg-slate-900 text-white font-black text-sm tracking-widest flex items-center justify-center transition hover:bg-slate-800 shadow-md"
                           onClick={() => {}} 
                         >
                           NAVIGATE
@@ -546,7 +668,7 @@ export default function DriverApp({
                       
                       {currentRide.status === 'arriving' && (
                         <button 
-                          className="w-full py-4 rounded-full bg-white text-white font-black text-sm tracking-widest flex items-center justify-center transition hover:bg-slate-800 shadow-md"
+                          className="w-full py-4 rounded-full bg-slate-900 text-white font-black text-sm tracking-widest flex items-center justify-center transition hover:bg-slate-800 shadow-md"
                         >
                           ARRIVING NOW
                         </button>
@@ -677,6 +799,129 @@ export default function DriverApp({
                     <Send size={12} className="rotate-45" />
                   </button>
                 </form>
+
+              </div>
+            </div>
+          )}
+
+          {/* ── DRIVER PROFILE SETTINGS SCREEN ── */}
+          {showProfile && (
+            <div className="absolute inset-0 z-50 bg-white flex flex-col animate-in slide-in-from-right duration-250 text-slate-900 overflow-y-auto pb-8">
+              <div className="p-5 space-y-4">
+                
+                {/* Header */}
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setShowProfile(false)} 
+                    className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200"
+                  >
+                    <X size={16} className="text-slate-600" />
+                  </button>
+                  <h2 className="text-base font-black text-slate-900">Driver Profile</h2>
+                </div>
+
+                {/* Profile Avatar Card */}
+                <div className="text-center py-6 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 flex flex-col items-center">
+                  <div className="relative">
+                    <img 
+                      src="/driver_avatar.png" 
+                      alt="Driver Profile" 
+                      className="w-20 h-20 rounded-full object-cover shadow-lg border-2 border-amber-500/30" 
+                    />
+                    <span className="absolute bottom-0 right-0 bg-emerald-500 text-white rounded-full p-1 border border-white text-[8px] font-black uppercase tracking-wider px-1.5 shadow-sm">
+                      Online
+                    </span>
+                  </div>
+                  <h4 className="text-base font-black mt-3 text-slate-900">{driverName}</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">{driverEmail}</p>
+                  <div className="mt-2.5 flex items-center gap-1.5 bg-amber-50 text-amber-700 text-[10px] font-bold py-1 px-3 rounded-full border border-amber-100 uppercase tracking-wider">
+                    <span>⭐ 4.92 Rating</span>
+                  </div>
+                </div>
+
+                {/* Driver Stats Grid */}
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                    <span className="text-[9px] font-mono text-slate-500 uppercase block">Wallet</span>
+                    <span className="text-xs font-black text-slate-800 block mt-0.5">₹{driverWalletBalance.toFixed(0)}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                    <span className="text-[9px] font-mono text-slate-500 uppercase block">Trips</span>
+                    <span className="text-xs font-black text-slate-800 block mt-0.5">1,280</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center">
+                    <span className="text-[9px] font-mono text-slate-500 uppercase block">Acceptance</span>
+                    <span className="text-xs font-black text-slate-800 block mt-0.5">96%</span>
+                  </div>
+                </div>
+
+                {/* Form */}
+                <div className="rounded-2xl p-4 border border-slate-200 bg-slate-50 space-y-4">
+                  <span className="text-[10px] font-black text-slate-600 block uppercase tracking-wider border-b border-slate-200 pb-1.5">Driver Account Details</span>
+                  
+                  <div className="space-y-3.5 text-xs">
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">Driver Name</span>
+                      <input
+                        type="text"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-amber-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
+                        value={driverName}
+                        onChange={(e) => setDriverName(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">Email Address</span>
+                      <input
+                        type="email"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-amber-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
+                        value={driverEmail}
+                        onChange={(e) => setDriverEmail(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">Mobile Number</span>
+                      <input
+                        type="text"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-amber-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
+                        value={driverPhone}
+                        onChange={(e) => setDriverPhone(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <span className="text-[10px] font-black text-slate-600 block uppercase tracking-wider border-b border-slate-200 pb-1.5 pt-2">Vehicle Details</span>
+                  
+                  <div className="space-y-3.5 text-xs">
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">Vehicle Model Class</span>
+                      <input
+                        type="text"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-amber-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
+                        value={carModel}
+                        onChange={(e) => setCarModel(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <span className="text-[9px] text-slate-500 uppercase block mb-1 font-bold">License Plate Number</span>
+                      <input
+                        type="text"
+                        className="border border-slate-200 rounded-xl p-2.5 w-full focus:outline-none focus:border-amber-500 bg-white text-slate-800 text-xs font-medium shadow-sm"
+                        value={carPlate}
+                        onChange={(e) => setCarPlate(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowProfile(false)}
+                  className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold text-xs py-3 rounded-xl transition flex items-center justify-center shadow-md shadow-amber-500/10 uppercase tracking-wider"
+                >
+                  Save Profile Details
+                </button>
 
               </div>
             </div>
